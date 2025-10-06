@@ -1,0 +1,61 @@
+{
+  "name": "dxm-screen-app",
+  "version": "0.3.0",
+  "private": true,
+  "description": "DXM Screen App: Electron container for remote big screens with autostart and fullscreen.",
+  "main": "main.js",
+  "author": "459605823",
+  "license": "MIT",
+  "scripts": {
+    "start": "cross-env APP_ENV=development electron .",
+    "pack": "electron-builder --dir",
+    "dist": "cross-env APP_ENV=production SZA_NO_SYMLINKS=true electron-builder -w",
+    "dist:win": "cross-env APP_ENV=production SZA_NO_SYMLINKS=true electron-builder -w",
+    "dist:all": "cross-env APP_ENV=production SZA_NO_SYMLINKS=true electron-builder -w -m -l",
+    "dist:win:devtools": "cross-env APP_ENV=production OPEN_DEVTOOLS=1 SZA_NO_SYMLINKS=true electron-builder -w"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^32.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.dxm.screen",
+    "productName": "DXM Screen App",
+    "asar": true,
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!out/**",
+      "!.git/**",
+      "!**/*.map"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "DXM"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DXM Screen App",
+      "runAfterFinish": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    }
+  }
+}

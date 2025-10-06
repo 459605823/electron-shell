@@ -1,0 +1,14 @@
+{
+  "url": "http://8.140.255.182:100/",
+  "autoLaunch": true,
+  "kiosk": true,
+  "fullscreen": true,
+  "alwaysOnTop": true,
+  "keepAwake": true,
+  "reloadOnFailSeconds": 10,
+  "exitHotkey": "Ctrl+Shift+Q",
+  "displayIndex": 0,
+  "zoomFactor": 1.0,
+  "userAgentAppend": " BigScreenContainer/1.0",
+  "openDevTools": false
+}
