@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, shell, powerSaveBlocker, globalShortcut, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const https = require('https');
 
 let win;
 let keepAwakeId = null;
@@ -12,9 +14,13 @@ try {
   app.setAppUserModelId('com.example.bigscreen');
 } catch {}
 
-// 读取配置（按层合并）：
+// 读取配置（按层合并，打包后可在安装目录外部修改）：
 // 1) defaults -> 2) config.json -> 3) config.{env}.json -> 4) config.local.json
 // env 获取优先级：--env 参数 > APP_ENV > NODE_ENV > app.isPackaged 推断
+//
+// 配置文件查找策略：
+// - 开发模式：从项目根目录读取
+// - 打包后：优先从 exe 同目录读取外部配置，若不存在则回退到 asar 内部（只读）
 function loadConfig() {
   const defaults = {
     url: process.env.BIGSCREEN_URL || "https://example.com/your-bigscreen",
@@ -28,7 +34,11 @@ function loadConfig() {
     displayIndex: 0,
     zoomFactor: 1.0,
     userAgentAppend: " BigScreenContainer/1.0",
-    openDevTools: false
+    openDevTools: false,
+    // 启动前等待服务就绪配置
+    waitForServiceReady: true,
+    waitForServiceMaxSeconds: 120,
+    waitForServiceCheckInterval: 3
   };
 
   const argv = process.argv.slice(1);
@@ -42,20 +52,63 @@ function loadConfig() {
     envFromArg || process.env.APP_ENV || process.env.NODE_ENV || (app.isPackaged ? 'production' : 'development')
   ).toLowerCase();
 
-  function readJsonSafe(p) {
-    try {
-      if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8'));
-    } catch (e) {
-      console.error('读取配置失败：', p, e);
+  // 获取配置文件所在目录：
+  // - 打包后：exe 同级目录（允许用户修改）
+  // - 开发中：项目根目录
+  function getConfigDir() {
+    if (app.isPackaged) {
+      // 打包后：优先从 exe 所在目录读取外部配置
+      // path.dirname(app.getPath('exe')) 是 exe 文件所在目录
+      return path.dirname(app.getPath('exe'));
+    } else {
+      // 开发模式：从项目根目录
+      return __dirname;
     }
+  }
+
+  function readJsonSafe(filename) {
+    const externalPath = path.join(getConfigDir(), filename);
+    const internalPath = path.join(__dirname, filename);
+
+    // 优先读取外部配置（打包后可修改）
+    try {
+      if (fs.existsSync(externalPath)) {
+        const content = JSON.parse(fs.readFileSync(externalPath, 'utf-8'));
+        console.log(`已加载配置: ${externalPath}`);
+        return content;
+      }
+    } catch (e) {
+      console.error('读取外部配置失败：', externalPath, e);
+    }
+
+    // 回退到内部配置（asar 内或开发目录）
+    try {
+      if (fs.existsSync(internalPath)) {
+        const content = JSON.parse(fs.readFileSync(internalPath, 'utf-8'));
+        if (app.isPackaged) {
+          console.log(`使用内置配置: ${filename} (提示: 可在 exe 同目录创建该文件以覆盖)`);
+        }
+        return content;
+      }
+    } catch (e) {
+      console.error('读取内部配置失败：', internalPath, e);
+    }
+
     return null;
   }
 
-  const base = readJsonSafe(path.join(__dirname, 'config.json')) || {};
-  const envCfg = readJsonSafe(path.join(__dirname, `config.${runtimeEnv}.json`)) || {};
-  const local = readJsonSafe(path.join(__dirname, 'config.local.json')) || {};
+  const base = readJsonSafe('config.json') || {};
+  const envCfg = readJsonSafe(`config.${runtimeEnv}.json`) || {};
+  const local = readJsonSafe('config.local.json') || {};
 
-  return { ...defaults, ...base, ...envCfg, ...local };
+  const merged = { ...defaults, ...base, ...envCfg, ...local };
+
+  // 打印最终加载的 URL 便于调试
+  if (merged.url) {
+    console.log(`大屏 URL: ${merged.url}`);
+  }
+
+  return merged;
 }
 
 const cfg = loadConfig();
@@ -296,10 +349,109 @@ ipcMain.handle('reload-remote', () => {
   return true;
 });
 
-app.whenReady().then(() => {
+// ============ 启动前服务检查功能 ============
+
+/**
+ * 检查 URL 是否可访问
+ * @param {string} url 要检查的 URL
+ * @param {number} timeoutMs 单次请求超时时间（毫秒）
+ * @returns {Promise<boolean>}
+ */
+function checkUrlAvailable(url, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    try {
+      const urlObj = new URL(url);
+      const client = urlObj.protocol === 'https:' ? https : http;
+
+      const req = client.get(url, { timeout: timeoutMs }, (res) => {
+        // 任何 HTTP 响应都认为服务可用（包括 404、500 等）
+        // 这样可以确保即使返回错误页面，也说明服务器在运行
+        const isAvailable = res.statusCode >= 200 && res.statusCode < 600;
+        resolve(isAvailable);
+        req.destroy();
+      });
+
+      req.on('error', (err) => {
+        console.log(`  [检查] 连接失败: ${err.code || err.message}`);
+        resolve(false);
+      });
+
+      req.on('timeout', () => {
+        console.log(`  [检查] 请求超时`);
+        req.destroy();
+        resolve(false);
+      });
+    } catch (e) {
+      console.log(`  [检查] URL 解析错误: ${e.message}`);
+      resolve(false);
+    }
+  });
+}
+
+/**
+ * 等待大屏服务就绪
+ * @param {string} url 大屏服务 URL
+ * @param {number} maxWaitSeconds 最长等待时间（秒）
+ * @param {number} checkIntervalSeconds 检查间隔（秒）
+ * @returns {Promise<boolean>} 服务是否就绪
+ */
+async function waitForServiceReady(url, maxWaitSeconds = 120, checkIntervalSeconds = 3) {
+  console.log('\n========================================');
+  console.log('启动前服务检查');
+  console.log('========================================');
+  console.log(`目标服务: ${url}`);
+  console.log(`最长等待: ${maxWaitSeconds} 秒`);
+  console.log(`检查间隔: ${checkIntervalSeconds} 秒`);
+  console.log('----------------------------------------\n');
+
+  const startTime = Date.now();
+  let attemptCount = 0;
+
+  while (true) {
+    attemptCount++;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+
+    console.log(`[尝试 ${attemptCount}] 检查服务状态... (已等待 ${elapsed} 秒)`);
+
+    const isReady = await checkUrlAvailable(url);
+
+    if (isReady) {
+      console.log(`\n✓ 大屏服务已就绪！`);
+      console.log(`  - 尝试次数: ${attemptCount}`);
+      console.log(`  - 等待时间: ${elapsed} 秒`);
+      console.log('========================================\n');
+      return true;
+    }
+
+    // 检查是否超时
+    if (elapsed >= maxWaitSeconds) {
+      console.log(`\n✗ 等待超时 (${maxWaitSeconds} 秒)`);
+      console.log(`  应用将继续启动，但可能显示离线页面`);
+      console.log(`  应用内置了自动重试机制，稍后会自动加载内容`);
+      console.log('========================================\n');
+      return false;
+    }
+
+    // 等待后重试
+    await new Promise(resolve => setTimeout(resolve, checkIntervalSeconds * 1000));
+  }
+}
+
+app.whenReady().then(async () => {
   setupAutoLaunch();
   setupExitHotkey();
   setupKeepAwake();
+
+  // 启动前等待大屏服务就绪
+  if (cfg.waitForServiceReady !== false) {
+    console.log('启用了服务就绪检查，开始等待...\n');
+    const maxWait = cfg.waitForServiceMaxSeconds || 120;
+    const checkInterval = cfg.waitForServiceCheckInterval || 3;
+    await waitForServiceReady(cfg.url, maxWait, checkInterval);
+  } else {
+    console.log('服务就绪检查已禁用，直接启动窗口\n');
+  }
+
   createWindow();
   setupDebugHotkeys();
 

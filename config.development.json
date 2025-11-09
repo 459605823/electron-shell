@@ -1,6 +1,10 @@
 {
+  "url": "http://localhost:3001/#/screen-b",
   "openDevTools": true,
   "kiosk": false,
   "fullscreen": false,
-  "alwaysOnTop": false
+  "alwaysOnTop": false,
+  "waitForServiceReady": true,
+  "waitForServiceMaxSeconds": 60,
+  "waitForServiceCheckInterval": 2
 }

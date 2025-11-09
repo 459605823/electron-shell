@@ -2,5 +2,9 @@
   "openDevTools": false,
   "kiosk": true,
   "fullscreen": true,
-  "alwaysOnTop": true
+  "alwaysOnTop": true,
+  "autoLaunch": true,
+  "waitForServiceReady": true,
+  "waitForServiceMaxSeconds": 120,
+  "waitForServiceCheckInterval": 3
 }

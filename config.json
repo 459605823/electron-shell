@@ -1,5 +1,5 @@
 {
-  "url": "http://8.140.255.182:100/",
+  "url": "http://localhost:38080/#/screen-a",
   "autoLaunch": true,
   "kiosk": true,
   "fullscreen": true,

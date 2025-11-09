@@ -23,12 +23,28 @@
     "appId": "com.dxm.screen",
     "productName": "DXM Screen App",
     "asar": true,
+    "asarUnpack": [
+      "config*.json"
+    ],
     "files": [
       "**/*",
       "!dist/**",
       "!out/**",
       "!.git/**",
-      "!**/*.map"
+      "!**/*.map",
+      "!config.local.json",
+      "!config.example.json",
+      "!config.development.json"
+    ],
+    "extraFiles": [
+      {
+        "from": "config.json",
+        "to": "config.json"
+      },
+      {
+        "from": "config.production.json",
+        "to": "config.production.json"
+      }
     ],
     "directories": {
       "buildResources": "build",

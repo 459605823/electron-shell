@@ -12,3 +12,7 @@ pnpm-debug.log*
 # Build outputs
 dist/
 out/
+
+# Local config (do not commit personal/env-specific configs)
+config.local.json
+config.json
