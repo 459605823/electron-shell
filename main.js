@@ -339,7 +339,58 @@ function loadOffline() {
   if (fs.existsSync(offlinePath)) {
     win.loadFile('offline.html');
   } else {
-    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><title>Offline</title><style>html,body{background:#000;color:#fff;height:100%;display:flex;align-items:center;justify-content:center;margin:0;font:16px/1.6 system-ui,Segoe UI,Arial}</style><div>正在尝试连接大屏…</div>'));
+    // 使用 loading 样式而不是错误提示
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>加载中</title>
+  <style>
+    html, body {
+      background: #000;
+      color: #fff;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      font: 16px/1.6 system-ui, "Segoe UI", Arial;
+    }
+    .loading-container {
+      text-align: center;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      margin: 0 auto 20px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    .loading-tip {
+      font-size: 14px;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-container">
+    <div class="spinner"></div>
+    <div class="loading-text">正在连接大屏服务...</div>
+    <div class="loading-tip">请稍候</div>
+  </div>
+</body>
+</html>
+    `));
   }
 }
 
@@ -442,16 +493,8 @@ app.whenReady().then(async () => {
   setupExitHotkey();
   setupKeepAwake();
 
-  // 启动前等待大屏服务就绪
-  if (cfg.waitForServiceReady !== false) {
-    console.log('启用了服务就绪检查，开始等待...\n');
-    const maxWait = cfg.waitForServiceMaxSeconds || 120;
-    const checkInterval = cfg.waitForServiceCheckInterval || 3;
-    await waitForServiceReady(cfg.url, maxWait, checkInterval);
-  } else {
-    console.log('服务就绪检查已禁用，直接启动窗口\n');
-  }
-
+  // 直接启动窗口，不等待服务就绪
+  // 如果服务未就绪，会显示 loading 页面并自动重试
   createWindow();
   setupDebugHotkeys();
 
