@@ -62,17 +62,19 @@
         }
       ],
       "icon": "build/icon.ico",
-      "publisherName": "Electron Shell"
+      "sign": null,
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": true,
       "allowElevation": true,
-      "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "shortcutName": "Electron Shell",
       "runAfterFinish": true,
+      "shortcutName": "Electron Shell",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     }
   }
