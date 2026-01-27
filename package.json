@@ -1,13 +1,14 @@
 {
-  "name": "dxm-screen-app",
+  "name": "electron-shell",
   "version": "0.3.0",
   "private": true,
-  "description": "DXM Screen App: Electron container for remote big screens with autostart and fullscreen.",
+  "description": "A minimal Electron shell for displaying web content on a dedicated screen.",
   "main": "main.js",
   "author": "459605823",
   "license": "MIT",
   "scripts": {
     "start": "cross-env APP_ENV=development electron .",
+    "start:win": "powershell -NoProfile -ExecutionPolicy Bypass -File start.ps1",
     "pack": "electron-builder --dir",
     "dist": "cross-env APP_ENV=production SZA_NO_SYMLINKS=true electron-builder -w",
     "dist:win": "cross-env APP_ENV=production SZA_NO_SYMLINKS=true electron-builder -w",
@@ -20,14 +21,15 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.dxm.screen",
-    "productName": "DXM Screen App",
+    "appId": "com.electron.shell",
+    "productName": "Electron Shell",
     "asar": true,
     "asarUnpack": [
       "config*.json"
     ],
     "files": [
       "**/*",
+      "src/**/*",
       "!dist/**",
       "!out/**",
       "!.git/**",
@@ -60,7 +62,7 @@
         }
       ],
       "icon": "build/icon.ico",
-      "publisherName": "DXM"
+      "publisherName": "Electron Shell"
     },
     "nsis": {
       "oneClick": true,
@@ -69,7 +71,7 @@
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "DXM Screen App",
+      "shortcutName": "Electron Shell",
       "runAfterFinish": true,
       "artifactName": "${productName}-Setup-${version}.${ext}"
     }

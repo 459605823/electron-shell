@@ -11,29 +11,44 @@
       .wrap { height: 100%; display: grid; place-items: center; text-align: center; gap: 16px; }
       .spinner { width: 48px; height: 48px; border: 4px solid #333; border-top-color: #0af; border-radius: 50%; animation: s 1s linear infinite; margin: 0 auto 8px; }
       @keyframes s { to { transform: rotate(360deg); } }
-      button { background: #0af; color: #000; border: 0; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
-      button:disabled { opacity: .6; cursor: default; }
-      .muted { opacity: .8; font-size: 14px; }
+      button { background: #0af; color: #000; border: 0; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; transition: opacity 0.2s; }
+      button:hover:not(:disabled) { opacity: 0.9; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      .muted { opacity: .8; font-size: 14px; margin: 8px 0; }
+      .content { max-width: 400px; }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <div>
+      <div class="content">
         <div class="spinner" aria-hidden="true"></div>
         <h1 style="margin: 8px 0 12px;">正在连接大屏服务...</h1>
         <p class="muted">正在等待服务就绪，系统将自动重试。</p>
+        <p style="margin-top: 20px;">
+          <button id="retry">立即重试</button>
+        </p>
       </div>
     </div>
     <script>
       const btn = document.getElementById('retry');
-      btn?.addEventListener('click', async () => {
-        btn.disabled = true;
-        try {
-          await window.kiosk?.reloadRemote?.();
-        } finally {
-          setTimeout(() => (btn.disabled = false), 1500);
-        }
-      });
+      if (btn) {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = '正在重试...';
+          try {
+            if (window.kiosk && window.kiosk.reloadRemote) {
+              await window.kiosk.reloadRemote();
+            }
+          } catch (error) {
+            console.error('重试失败:', error);
+          } finally {
+            setTimeout(() => {
+              btn.disabled = false;
+              btn.textContent = '立即重试';
+            }, 1500);
+          }
+        });
+      }
     </script>
   </body>
 </html>

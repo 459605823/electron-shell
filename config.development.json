@@ -1,8 +1,8 @@
 {
-  "url": "http://localhost:3001/#/screen-b",
+  "url": "http://8.140.255.182:38080/#/screen-a",
   "openDevTools": true,
   "kiosk": false,
-  "fullscreen": false,
+  "fullscreen": true,
   "alwaysOnTop": false,
   "waitForServiceReady": true,
   "waitForServiceMaxSeconds": 60,

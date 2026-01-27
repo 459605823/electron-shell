@@ -1,5 +1,5 @@
 {
-  "url": "http://localhost:38080/#/screen-a",
+  "url": "http://8.140.255.182:38080/#/screen-a",
   "autoLaunch": true,
   "kiosk": true,
   "fullscreen": true,
@@ -9,6 +9,6 @@
   "exitHotkey": "Ctrl+Shift+Q",
   "displayIndex": 0,
   "zoomFactor": 1.0,
-  "userAgentAppend": " BigScreenContainer/1.0",
+  "userAgentAppend": " ElectronShell/1.0",
   "openDevTools": false
 }
